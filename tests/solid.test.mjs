@@ -11,13 +11,24 @@ const address = 'https://pod.example/alice/chats/lobby/index.ttl#this';
 
 test('chat addresses are normalised from folders, index files and app links', () => {
   assert.equal(solid.chatAddress('https://pod.example/alice/chats/lobby/'), address);
-  assert.equal(solid.chatAddress('https://pod.example/alice/chats/lobby/index.ttl'), address);
+  assert.equal(solid.chatAddress('https://pod.example/alice/chats/lobby/index.ttl'), 'https://pod.example/alice/chats/lobby/index.ttl');
   assert.equal(solid.chatAddress(address), address);
   assert.equal(solid.chatAddress(`https://solid-chat.com/v2/#/room/${encodeURIComponent(address)}`), address);
   assert.throws(() => solid.chatAddress('34550:abc:slug'), /https/);
   assert.throws(() => solid.chatAddress('https://u:p@pod.example/x/'), /Invalid/);
   assert.equal(solid.chatRoot(address), 'https://pod.example/alice/chats/lobby/');
   assert.equal(solid.dayUrl(address, Date.UTC(2026, 9, 22, 23, 59, 59) / 1000), 'https://pod.example/alice/chats/lobby/2026/10/22/chat.ttl');
+});
+
+test('findChannel settles a document address on the channel inside it', () => {
+  const doc = 'https://pod.example/x/index.ttl';
+  const typed = parseTurtle(`<#this> a <http://www.w3.org/ns/pim/meeting#LongChat> .`, doc);
+  assert.equal(solid.findChannel(typed, doc), `${doc}#this`);
+  assert.equal(solid.findChannel(typed, `${doc}#this`), `${doc}#this`);
+  const bare = parseTurtle(`<> a <http://www.w3.org/ns/pim/meeting#LongChat>; <http://www.w3.org/2005/01/wf/flow#message> <#m1> .`, doc);
+  assert.equal(solid.findChannel(bare, `${doc}#this`), doc);
+  const linkOnly = parseTurtle(`<> <http://www.w3.org/2005/01/wf/flow#message> <#m1> . <#m1> <http://rdfs.org/sioc/ns#content> "x" .`, doc);
+  assert.equal(solid.findChannel(linkOnly, doc), doc);
 });
 
 test('author ids: did:nostr makers become hex, WebIDs stay IRIs', () => {

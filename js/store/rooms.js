@@ -146,6 +146,14 @@ export async function openRoom(pointer) {
     const { triples, missing, wacAllow } = await solid.readGraph(solid.stripFragment(address), { signer: owner });
     if (me.value !== owner) return;
     if (missing) throw new Error('No chat at that address.');
+    const channel = solid.findChannel(triples, address);
+    if (channel !== address) {
+      // The pasted link named the document; the channel inside it has another IRI. Switch
+      // to it so the room has one key everywhere.
+      setRoom(address, { loading: false });
+      go(`#/room/${encodeURIComponent(channel)}`);
+      return;
+    }
     room = { ...solid.parseChat(triples, address), trusted: [], blocked: [] };
     // Chats that keep their messages in the index document itself (the earlier Solid
     // Chat app, ShortChat) are shown too; new posts still go to day files.

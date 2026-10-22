@@ -165,7 +165,21 @@ export function chatAddress(input) {
   if (url.username || url.password) throw new Error('Invalid chat link.');
   if (url.hash) return url.href;
   if (url.pathname.endsWith('/')) return `${url.href}index.ttl#this`;
-  return `${url.href}#this`;
+  // A document without a fragment: the channel may be <doc>#this or the document itself
+  // (the earlier Solid Chat app wrote `@id: ""`); findChannel settles it once the file is read.
+  return url.href;
+}
+
+// The channel subject inside an index document: the address itself when it has triples,
+// else the first meeting:LongChat in the document, else the document's own IRI.
+export function findChannel(triples, address) {
+  if (triples.some((t) => t.s === address)) return address;
+  const typed = subjectsOf(triples, RDF_TYPE, T.LongChat).find((s) => !s.startsWith('_:'));
+  if (typed) return typed;
+  const doc = stripFragment(address);
+  if (triples.some((t) => t.s === doc)) return doc;
+  const linking = triples.find((t) => t.p === T.message && !t.s.startsWith('_:'));
+  return linking ? linking.s : address;
 }
 
 export const chatRoot = (address) => containerOf(address);
