@@ -1,0 +1,319 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        font-family: Inter, Lato, 'Noto Sans', sans-serif;
+        color: #fff;
+        background:
+          radial-gradient(900px 520px at 88% 8%, rgba(196, 160, 255, 0.55), transparent 60%),
+          radial-gradient(700px 500px at 4% 100%, rgba(56, 189, 248, 0.26), transparent 60%),
+          linear-gradient(135deg, #1a1033 0%, #2b1a6b 45%, #5b2fc0 100%);
+        position: relative;
+      }
+      /* faint folder-grid: the pod */
+      body::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+        background-size: 42px 42px;
+        mask-image: linear-gradient(90deg, #000 0%, transparent 70%);
+      }
+      .left {
+        position: absolute;
+        left: 72px;
+        top: 62px;
+        width: 650px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .mark {
+        width: 76px;
+        height: 76px;
+        border-radius: 22px;
+        background: linear-gradient(145deg, #a78bfa, #7c4dff 55%, #4c2fb8);
+        box-shadow:
+          0 18px 40px rgba(20, 10, 80, 0.55),
+          inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        display: grid;
+        place-items: center;
+      }
+      .wordmark {
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        opacity: 0.94;
+      }
+      .wordmark small {
+        font-size: 22px;
+        font-weight: 600;
+        opacity: 0.6;
+        margin-left: 10px;
+        vertical-align: 6px;
+      }
+      h1 {
+        margin-top: 38px;
+        font-size: 64px;
+        line-height: 1.04;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+      }
+      h1 span {
+        background: linear-gradient(90deg, #d8c6ff, #93c5fd);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      p.sub {
+        margin-top: 22px;
+        font-size: 24px;
+        line-height: 1.45;
+        color: rgba(232, 224, 255, 0.84);
+        font-weight: 500;
+      }
+      .chips {
+        display: flex;
+        gap: 12px;
+        margin-top: 30px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        padding: 10px 18px;
+        border-radius: 999px;
+        font-size: 20px;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #f1ecff;
+      }
+      /* phone */
+      .phone {
+        position: absolute;
+        right: 64px;
+        top: 52px;
+        width: 400px;
+        height: 620px;
+        border-radius: 46px;
+        padding: 12px;
+        background: linear-gradient(160deg, #2b2a3a, #0d0c16);
+        box-shadow:
+          0 40px 90px rgba(5, 0, 40, 0.65),
+          0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+        transform: rotate(5deg);
+      }
+      .screen {
+        width: 100%;
+        height: 100%;
+        border-radius: 36px;
+        overflow: hidden;
+        background: #e9e7f3;
+        color: #16181d;
+        display: flex;
+        flex-direction: column;
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 30px 18px 14px;
+        background: #fff;
+        border-bottom: 1px solid #e3e5ea;
+      }
+      .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        color: #fff;
+        flex: none;
+      }
+      .avatar.room {
+        border-radius: 12px;
+        background: linear-gradient(145deg, #a78bfa, #7c4dff);
+      }
+      .bar b {
+        font-size: 18px;
+        display: block;
+      }
+      .bar small {
+        font-size: 13px;
+        color: #6b7280;
+      }
+      .thread {
+        flex: 1;
+        padding: 16px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        justify-content: flex-end;
+      }
+      .row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+      }
+      .row.mine {
+        justify-content: flex-end;
+      }
+      .row .mini {
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+      }
+      .bubble {
+        position: relative;
+        max-width: 250px;
+        padding: 9px 13px 8px;
+        border-radius: 18px;
+        background: #fff;
+        font-size: 16px;
+        line-height: 1.35;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+      }
+      .row:not(.mine) .bubble {
+        border-bottom-left-radius: 4px;
+      }
+      .mine .bubble {
+        background: #6d3fe0;
+        color: #fff;
+        border-bottom-right-radius: 4px;
+      }
+      .who {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 2px;
+        color: #c2410c;
+      }
+      .who.b {
+        color: #0e7490;
+      }
+      .meta {
+        font-size: 11px;
+        opacity: 0.6;
+        margin-left: 8px;
+        float: right;
+        position: relative;
+        top: 6px;
+      }
+      .react {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 1px 9px;
+        border-radius: 999px;
+        background: rgba(127, 127, 127, 0.15);
+        font-size: 13px;
+      }
+      .day {
+        align-self: center;
+        font-size: 12px;
+        color: #6b7280;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 2px 10px;
+        border-radius: 999px;
+        margin-bottom: 6px;
+      }
+      .composer {
+        margin: 0 12px 16px;
+        padding: 12px 16px;
+        border-radius: 22px;
+        background: #fff;
+        color: #9aa0ab;
+        font-size: 15px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .foot {
+        position: absolute;
+        left: 72px;
+        bottom: 44px;
+        font-size: 20px;
+        color: rgba(232, 224, 255, 0.72);
+        font-weight: 500;
+      }
+      .foot b {
+        color: #fff;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="left">
+      <div class="brand">
+        <div class="mark">
+          <svg width="46" height="46" viewBox="0 0 64 64" aria-hidden="true">
+            <path
+              d="M14 18a6 6 0 0 1 6-6h24a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6H29l-9 8v-8h0a6 6 0 0 1-6-6z"
+              fill="#fff"
+            />
+            <circle cx="25" cy="26" r="2.6" fill="#7c4dff" />
+            <circle cx="32" cy="26" r="2.6" fill="#7c4dff" />
+            <circle cx="39" cy="26" r="2.6" fill="#7c4dff" />
+          </svg>
+        </div>
+        <div class="wordmark">Solid Chat<small>v2</small></div>
+      </div>
+      <h1>Chat that lives<br /><span>on your pod.</span></h1>
+      <p class="sub">Rooms are folders on a Solid pod, in the open chat format.<br />Encrypted DMs over Nostr. One key for both.</p>
+      <div class="chips">
+        <span class="chip">📂 Rooms on pods</span>
+        <span class="chip">🔒 Encrypted DMs</span>
+        <span class="chip">🪪 did:nostr</span>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="screen">
+        <div class="bar">
+          <div class="avatar room">#</div>
+          <div><b>Lobby</b><small>alice.pod.example</small></div>
+        </div>
+        <div class="thread">
+          <div class="day">Today</div>
+          <div class="row">
+            <div class="avatar mini" style="background: linear-gradient(145deg, #f59e0b, #ef4444)">A</div>
+            <div class="bubble"><div class="who">Ada</div>Is this really stored on your pod? 👀<span class="meta">09:41</span></div>
+          </div>
+          <div class="row mine">
+            <div class="bubble">Yes. A Turtle file per day, in a folder I control.<span class="meta">09:42 ✓</span></div>
+          </div>
+          <div class="row">
+            <div class="avatar mini" style="background: linear-gradient(145deg, #06b6d4, #2563eb)">B</div>
+            <div class="bubble">
+              <div class="who b">Bob · SolidOS</div>And I can read it from any Solid app?<span class="meta">09:42</span><br /><span class="react">🔥 2</span>
+            </div>
+          </div>
+          <div class="row mine">
+            <div class="bubble">Same chat, any app. Your key is your identity.<span class="meta">09:43 ✓</span></div>
+          </div>
+        </div>
+        <div class="composer"><span>Message Lobby</span><span>🙂</span></div>
+      </div>
+    </div>
+
+    <div class="foot">solid-chat.com/v2 · <b>Solid</b> rooms · <b>Nostr</b> DMs · nothing to install</div>
+  </body>
+</html>
