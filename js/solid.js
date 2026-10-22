@@ -169,6 +169,16 @@ export function chatAddress(input) {
 }
 
 export const chatRoot = (address) => containerOf(address);
+
+// The open room every new account starts with.
+export const STARTER_ROOM = {
+  address: 'https://melvincarvalho.com/public/chats/lobby/index.ttl#this',
+  root: 'https://melvincarvalho.com/public/chats/lobby/',
+  owner: 'https://melvincarvalho.com/#me',
+  name: 'Lobby',
+  picture: '',
+  about: 'The open room of Solid Chat. Anyone can read and post; stored on melvincarvalho.com.',
+};
 export const chatLink = (address) => `${location.origin}${location.pathname}#/room/${encodeURIComponent(address)}`;
 
 const dayPath = (seconds) => {
@@ -384,7 +394,8 @@ const sockets = new Map(); // origin -> { ws, subs: Map<url, Set<fn>>, url, time
 async function updatesViaFor(url) {
   const res = await fetch(stripFragment(url), { method: 'HEAD', referrerPolicy: 'no-referrer', credentials: 'omit', cache: 'no-store' }).catch(() => null);
   const header = res?.headers.get('Updates-Via');
-  if (header) return header;
+  // A pod behind a TLS proxy may advertise ws://; from an https page only wss:// can connect.
+  if (header) return location.protocol === 'https:' ? header.replace(/^ws:\/\//, 'wss://') : header;
   // Common default when the header is missing on an error response.
   const u = new URL(url);
   return `${u.protocol === 'https:' ? 'wss' : 'ws'}://${u.host}/.notifications`;

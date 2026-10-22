@@ -18,7 +18,9 @@ const dayLists = new Map(); // address -> [dayUrl] newest first (history walk)
 const pending = new Set(); // message ids being posted (not yet on the pod)
 
 export function load(signer) {
-  joinedRooms.value = storage.get(`chat:rooms:${signer.pubkey}`, []);
+  const saved = storage.get(`chat:rooms:${signer.pubkey}`, null);
+  // A first run starts in the open Lobby; leaving it is remembered like any other room.
+  joinedRooms.value = saved ?? [{ ...solid.STARTER_ROOM }];
 }
 
 export function reset() {
@@ -139,11 +141,17 @@ export async function openRoom(pointer) {
     .then((cached) => me.value === owner && addRoomMessages(address, cached, { fromCache: true }))
     .catch(() => {});
   let room;
+  let indexMessages = [];
   try {
     const { triples, missing, wacAllow } = await solid.readGraph(solid.stripFragment(address), { signer: owner });
     if (me.value !== owner) return;
     if (missing) throw new Error('No chat at that address.');
     room = { ...solid.parseChat(triples, address), trusted: [], blocked: [] };
+    // Chats that keep their messages in the index document itself (the earlier Solid
+    // Chat app, ShortChat) are shown too; new posts still go to day files.
+    const inIndex = solid.parseDay(triples, address);
+    indexMessages = inIndex.messages;
+    addReactions(inIndex.reactions);
     applyWac(address, wacAllow);
     // Our own rights (the anonymous read's WAC-Allow describes the public).
     solid.permissions(owner, solid.dayUrl(address)).then((w) => me.value === owner && applyWac(address, w)).catch(() => {});
@@ -155,6 +163,7 @@ export async function openRoom(pointer) {
   }
   setRoom(address, { room, loading: false });
   if (room.owner) requestProfiles([room.owner]);
+  if (indexMessages.length) addRoomMessages(address, indexMessages, { fromCache: true });
   if (joinedRooms.value.some((r) => r.address === address)) saveJoined(joinedRooms.value.map((r) => (r.address === address ? roomEntry(room) : r)));
   // Today, then the most recent earlier days until a screenful is loaded.
   const today = solid.dayUrl(address);
