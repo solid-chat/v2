@@ -235,6 +235,16 @@ function PodSettings() {
   const save = useAction();
   const find = useAction();
   const chats = store.podChats.value;
+  // Does the pod take this key as its owner? A signed HEAD of the folder says.
+  const [owner, setOwner] = useState(null); // null = unknown, true/false
+  const pod = store.podUrl.value;
+  useEffect(() => {
+    setOwner(null);
+    if (!pod) return;
+    let live = true;
+    import('../solid.js').then((solid) => solid.permissions(me.value, pod)).then((w) => live && setOwner(w.user.has('write'))).catch(() => live && setOwner(null));
+    return () => { live = false; };
+  }, [pod]);
   return html`<form class="card" onSubmit=${(e) => {
     e.preventDefault();
     save.run(async () => {
@@ -257,6 +267,9 @@ function PodSettings() {
         setId(found);
       })}>${find.busy ? 'Looking…' : 'Find'}</button></span></label>
     ${(save.error || find.error) && html`<p class="error">${save.error || find.error}</p>`}
+    ${owner === false && html`<p class="muted small">This pod does not recognise your key as its owner yet, so creating chats there will be refused.
+      <a href=${`https://jss.live/doctor/?pod=${encodeURIComponent(pod)}`} target="_blank" rel="noopener noreferrer">Link this key to your pod with doctor ↗</a> (one sign-in to the pod; it then knows your key).</p>`}
+    ${owner === true && html`<p class="muted small">This pod recognises your key as its owner.</p>`}
     ${chats && chats.length > 0 && html`<p class="muted small">Your type index lists ${chats.length} chat${chats.length > 1 ? 's' : ''}: ${chats.map((c) => html`<a href=${`#/room/${encodeURIComponent(c.address)}`}>${c.name}</a> `)}</p>`}
     <button disabled=${save.busy}>Save</button>
   </form>`;
