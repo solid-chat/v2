@@ -77,9 +77,10 @@ export function RoomChat({ id }) {
     invalid = e.message;
   }
   const older = useAction();
+  const guest = !me.value;
   const state = (pointer && roomState.value[pointer.address]) || { messages: [], loading: true };
   const actions = useChatActions({ room: pointer?.address }, state.messages);
-  const [unreadAfter] = useState(() => (pointer ? store.readPoint(pointer.address) : Infinity));
+  const [unreadAfter] = useState(() => (pointer && me.value ? store.readPoint(pointer.address) : Infinity));
   useMarkRead(pointer?.address, state.messages);
   useEffect(() => {
     if (pointer) store.openRoom(pointer);
@@ -112,14 +113,17 @@ export function RoomChat({ id }) {
       </button>
       <button class="icon" title="Search (Ctrl+F)" aria-label="Search this chat" onClick=${() => (chatSearch.value = !chatSearch.value)}>🔍</button>
       <button class="wide-only" onClick=${() => copy(`${location.origin}${location.pathname}#/room/${nostr.encodeRoomLink(room)}`, 'Chat link copied')}>Share</button>
-      ${joined
-        ? html`<button class="wide-only" onClick=${() => store.leaveRoom(room.address)}>Leave</button>`
-        : html`<button class="primary" onClick=${() => store.joinRoom(room)}>Join</button>`}
+      ${guest
+        ? html`<button class="primary" onClick=${() => (store.wantLogin.value = true)}>Sign in</button>`
+        : joined
+          ? html`<button class="wide-only" onClick=${() => store.leaveRoom(room.address)}>Leave</button>`
+          : html`<button class="primary" onClick=${() => store.joinRoom(room)}>Join</button>`}
     </header>
     ${chatSearch.value && html`<${ChatSearch} messages=${state.messages} onClose=${() => (chatSearch.value = false)} />`}
     <${InfoPanel}><${RoomInfo} room=${room} messages=${state.messages} /></${InfoPanel}>
     <${MessageList}
       messages=${state.messages}
+      room=${room}
       policy=${policy}
       badge=${(pk) => (pk === room.owner ? 'owner' : '')}
       unreadAfter=${unreadAfter}
@@ -130,9 +134,9 @@ export function RoomChat({ id }) {
         return q ?? null;
       }}
       jumpOlder=${jumpOlder}
-      ...${actions.list}
-      onEdit=${mayWrite ? actions.list.onEdit : undefined}
-      onDelete=${mayWrite ? actions.list.onDelete : undefined}
+      ...${guest ? {} : actions.list}
+      onEdit=${mayWrite && !guest ? actions.list.onEdit : undefined}
+      onDelete=${mayWrite && !guest ? actions.list.onDelete : undefined}
       header=${html`<div class="older">
         ${state.exhausted
           ? html`<span class="muted small">Start of chat history</span>`
@@ -141,7 +145,10 @@ export function RoomChat({ id }) {
             </button>`}
       </div>`}
     />
-    ${state.canAppend === false &&
+    ${guest
+      ? html`<footer class="composer blocked-bar">Reading as a guest.
+          <button class="primary" onClick=${() => (store.wantLogin.value = true)}>Sign in to post</button></footer>`
+      : html`${state.canAppend === false &&
     html`<p class="composer-note muted small">This chat is read-only for your key: the pod does not let you post here.</p>`}
     <${Composer}
       ...${actions.composer}
@@ -150,11 +157,12 @@ export function RoomChat({ id }) {
       placeholder=${`Message ${room.name} — stored in the open on ${host}`}
       draftKey=${room.address}
       maxLength=${20000}
+      uploadTarget=${{ room: room.address }}
       onSend=${async (text, tags) => {
         await store.sendRoomMessage(room.address, text, actions.composer.replyTo, tags);
         if (!joined) store.joinRoom(room);
         actions.clearReply();
       }}
-    />
+    />`}
   </section>`;
 }

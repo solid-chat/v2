@@ -63,6 +63,7 @@ export function Login() {
       ${error && html`<p class="error">${error}</p>`}
       <button class="primary" disabled=${busy}>${busy ? 'Connecting…' : me.value ? 'Add account' : 'Sign in'}</button>
       ${me.value && html`<button type="button" onClick=${() => (store.addingAccount.value = false)}>Cancel</button>`}
+      ${!me.value && store.wantLogin.value && html`<button type="button" onClick=${() => (store.wantLogin.value = false)}>Back to the chat</button>`}
     </form>`;
   if (adding) return html`<main class="login">${form}</main>`;
   return html`<main class="login landing">

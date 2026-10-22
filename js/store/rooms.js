@@ -21,6 +21,7 @@ export function load(signer) {
   const saved = storage.get(`chat:rooms:${signer.pubkey}`, null);
   // A first run starts in the open Lobby; leaving it is remembered like any other room.
   joinedRooms.value = saved ?? [{ ...solid.STARTER_ROOM }];
+  loadPodChats();
 }
 
 export function reset() {
@@ -75,10 +76,10 @@ export function addRoomMessages(address, list, { fromCache = false } = {}) {
   if (!fresh.length && !changed.length) return;
   const replaced = new Map(changed.map((m) => [m.id, m]));
   setRoom(address, { messages: [...current.map((m) => replaced.get(m.id) ?? m), ...fresh].sort(byTime) });
-  if (!fromCache) queueRoomSave(address, [...fresh, ...changed]);
+  if (!fromCache && me.value) queueRoomSave(address, [...fresh, ...changed]);
   requestProfiles(nostr.uniq(fresh.map((m) => m.pubkey)));
   const room = roomState.value[address]?.room;
-  if (room && !fromCache && joinedRooms.value.some((r) => r.address === address)) for (const m of fresh) emitIncoming({ room }, m);
+  if (room && me.value && !fromCache && joinedRooms.value.some((r) => r.address === address)) for (const m of fresh) emitIncoming({ room }, m);
 }
 
 // Messages that vanished from a day file were deleted on the pod.
@@ -103,7 +104,7 @@ function remember(room) {
 }
 
 function applyWac(address, wacAllow) {
-  if (!wacAllow || !me.value) return;
+  if (!wacAllow) return;
   const user = new Set([...wacAllow.user, ...wacAllow.public]);
   const current = roomState.value[address] ?? {};
   setRoom(address, { canWrite: !!current.canWrite || user.has('write'), canAppend: !!current.canAppend || user.has('append') || user.has('write') });
@@ -132,12 +133,12 @@ async function readDay(address, dayUrl, { silent = false } = {}) {
 export async function openRoom(pointer) {
   const { address } = pointer;
   if (watchers.has(address) || roomState.value[address]?.loading) return;
-  if (!me.value) return;
+  // Reading needs no account: a guest (me.value null) can open a room from a link.
   const owner = me.value;
   setRoom(address, { loading: true, error: '' });
   const remembered = joinedRooms.value.find((r) => r.address === address);
   if (remembered && !roomState.value[address]?.room) setRoom(address, { room: { ...remembered, trusted: [], blocked: [] } });
-  db.loadRoomMessages(address)
+  if (owner) db.loadRoomMessages(address)
     .then((cached) => me.value === owner && addRoomMessages(address, cached, { fromCache: true }))
     .catch(() => {});
   let room;
@@ -162,7 +163,7 @@ export async function openRoom(pointer) {
     addReactions(inIndex.reactions);
     applyWac(address, wacAllow);
     // Our own rights (the anonymous read's WAC-Allow describes the public).
-    solid.permissions(owner, solid.dayUrl(address)).then((w) => me.value === owner && applyWac(address, w)).catch(() => {});
+    if (owner) solid.permissions(owner, solid.dayUrl(address)).then((w) => me.value === owner && applyWac(address, w)).catch(() => {});
   } catch (e) {
     if (me.value !== owner) return;
     room = roomState.value[address]?.room;
@@ -172,7 +173,7 @@ export async function openRoom(pointer) {
   setRoom(address, { room, loading: false });
   if (room.owner) requestProfiles([room.owner]);
   if (indexMessages.length) addRoomMessages(address, indexMessages, { fromCache: true });
-  if (joinedRooms.value.some((r) => r.address === address)) saveJoined(joinedRooms.value.map((r) => (r.address === address ? roomEntry(room) : r)));
+  if (owner && joinedRooms.value.some((r) => r.address === address)) saveJoined(joinedRooms.value.map((r) => (r.address === address ? roomEntry(room) : r)));
   // Today, then the most recent earlier days until a screenful is loaded.
   const today = solid.dayUrl(address);
   try {
@@ -392,6 +393,16 @@ export function setPodUrl(value) {
   storage.set('chat:pod', podUrl.value || undefined);
 }
 
+// The account's WebID on its pod (optional): where its public type index is found, so
+// chats created here are listed for every Solid app.
+export const webId = signal(storage.get('chat:webid', ''));
+export function setWebId(value) {
+  const v = value.trim();
+  if (v && !/^https?:\/\/\S+$/.test(v)) throw new Error('Enter the https:// address of your WebID (for example https://you.pod/profile/card#me).');
+  webId.value = v;
+  storage.set('chat:webid', v || undefined);
+}
+
 export async function createRoom({ name, open = true }) {
   if (!podUrl.value) throw new Error('Set your pod folder in Settings first.');
   if (!name.trim()) throw new Error('Give the chat a name.');
@@ -399,5 +410,53 @@ export async function createRoom({ name, open = true }) {
   const room = { address, root: solid.chatRoot(address), owner: me.value.pubkey, name: name.trim().slice(0, 100), picture: '', about: '', trusted: [], blocked: [] };
   setRoom(address, { room, messages: [], canWrite: true, canAppend: true });
   remember(room);
+  // List it in the pod's public type index when we know where that is (best effort).
+  if (webId.value)
+    solid.readProfile(webId.value)
+      .then((p) => p.typeIndex && solid.registerChat(me.value, p.typeIndex, address).then(() => loadPodChats()))
+      .catch((e) => notify(`Chat created, but not listed in your type index: ${e.message}`));
   return room;
+}
+
+// Chats listed in a pod's public type index: the account's own (podChats) and any
+// WebID or pod someone looks up on the New screen (chatsOnPod).
+export const podChats = signal(null); // null = not loaded, [] = none
+export async function loadPodChats() {
+  if (!webId.value) return (podChats.value = null);
+  try {
+    podChats.value = await chatsOnPod(webId.value);
+  } catch {
+    podChats.value = [];
+  }
+}
+
+// -> [{ address, name }] for a WebID (or a pod folder, whose WebID is guessed).
+export async function chatsOnPod(input) {
+  let id = input.trim();
+  if (!/#/.test(id) && !/profile\/card/.test(id)) id = (await solid.discoverWebId(id)) || id;
+  const profile = await solid.readProfile(id);
+  if (!profile.typeIndex) throw new Error('That profile lists no public type index.');
+  const found = await solid.listRegisteredChats(profile.typeIndex, me.value);
+  const chats = [];
+  for (const entry of found) {
+    if (entry.address) chats.push(entry);
+    else if (entry.container) {
+      // An instanceContainer: every folder inside with an index.ttl is a chat.
+      for (const child of await solid.listContainer(entry.container, me.value).catch(() => [])) if (child.endsWith('/')) chats.push({ address: `${child}index.ttl#this` });
+    }
+  }
+  // Names from each chat's index, in parallel, best effort.
+  await Promise.all(chats.map(async (c) => {
+    try {
+      const { triples } = await solid.readGraph(solid.stripFragment(c.address), { signer: me.value });
+      const channel = solid.findChannel(triples ?? [], c.address);
+      const parsed = solid.parseChat(triples ?? [], channel);
+      c.address = channel;
+      c.name = parsed.name;
+      c.owner = parsed.owner;
+    } catch {
+      c.name = c.address.replace(/^https?:\/\//, '');
+    }
+  }));
+  return chats;
 }

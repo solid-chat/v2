@@ -63,7 +63,7 @@ export function EmojiPanel({ onPick, onClose, style = '' }) {
 }
 
 
-function MessageMenu({ menu, onClose, onReply, onReact, onEdit, onDelete, onHide, onMoreReactions, onPin, pinnedId }) {
+function MessageMenu({ menu, onClose, onReply, onReact, onEdit, onDelete, onHide, onMoreReactions, onPin, pinnedId, room }) {
   const ref = useRef();
   const [confirming, setConfirming] = useState(false);
   useEffect(() => {
@@ -103,15 +103,15 @@ function MessageMenu({ menu, onClose, onReply, onReact, onEdit, onDelete, onHide
     <button role="menuitem" onClick=${act(() => copy(nostr.did(m.pubkey), nostr.isWebId(m.pubkey) ? 'WebID copied' : 'DID copied'))}>⧉ Copy author ${nostr.isWebId(m.pubkey) ? 'WebID' : 'DID'}</button>
     ${typeof m.id === 'string' && m.id.startsWith('http') && html`<button role="menuitem" onClick=${act(() => copy(m.id, 'Message link copied'))}>⧉ Copy message link</button>`}
     <button role="menuitem" onClick=${act(() => openProfile(m.pubkey))}>👤 View profile</button>
-    ${m.pubkey === me.value.pubkey && onEdit && html`<button role="menuitem" onClick=${act(() => onEdit(m))}>✎ Edit</button>`}
+    ${m.pubkey === me.value?.pubkey && onEdit && html`<button role="menuitem" onClick=${act(() => onEdit(m))}>✎ Edit</button>`}
     ${onPin && html`<button role="menuitem" onClick=${act(() => onPin(pinnedId === m.id ? null : m))}>📌 ${pinnedId === m.id ? 'Unpin' : 'Pin'}</button>`}
-    ${m.pubkey !== me.value.pubkey && !nostr.isWebId(m.pubkey) &&
+    ${m.pubkey !== me.value?.pubkey && !nostr.isWebId(m.pubkey) &&
     html`<${ConfirmButton} role="menuitem" label=${`⛔ Block ${store.displayName(m.pubkey)}`} confirm="Tap again to block" onConfirm=${act(() => store.toggleBlock(m.pubkey).catch(fail('Block')))} />`}
-    ${m.pubkey === me.value.pubkey &&
-    nostr.uploadsOf(m).length > 0 &&
+    ${m.pubkey === me.value?.pubkey &&
+    store.filesOf(m, room).length > 0 &&
     html`<${ConfirmButton} role="menuitem" className="" label="🧹 Remove file from server" confirm="Tap again to remove the file"
-      onConfirm=${act(() => store.deleteMedia(m).then((n) => store.notify(n > 1 ? 'Files removed from the server.' : 'File removed from the server.')).catch(fail('Remove file')))} />`}
-    ${m.pubkey === me.value.pubkey &&
+      onConfirm=${act(() => store.deleteMedia(m, room).then((n) => store.notify(n > 1 ? 'Files removed from the server.' : 'File removed from the server.')).catch(fail('Remove file')))} />`}
+    ${m.pubkey === me.value?.pubkey &&
     onDelete &&
     (confirming
       ? html`<button role="menuitem" class="danger" onClick=${act(() => onDelete(m))}>🗑 Tap again to delete for everyone</button>`
@@ -128,7 +128,7 @@ function Reactions({ message, onReact }) {
   for (const r of list) groups.set(r.emoji, [...(groups.get(r.emoji) ?? []), r.pubkey]);
   return html`<div class="reactions">
     ${[...groups].map(([emoji, who]) => {
-      const mine = who.includes(me.value.pubkey);
+      const mine = who.includes(me.value?.pubkey);
       return html`<button
         class=${mine ? 'on' : ''}
         title=${who.map(store.displayName).join(', ')}
@@ -148,7 +148,7 @@ function Tick({ id }) {
   return html`<span class="tick" title=${typeof id === 'string' && id.startsWith('http') ? 'Stored on the pod' : 'Accepted by a relay'}>✓</span>`;
 }
 
-export function MessageList({ messages, policy = () => 'trusted', badge = () => '', mediaAuto = () => true, onReply, onReact, onEdit, onDelete, onHide, footer, header, unreadAfter = Infinity, onReachTop, lookupQuote, jumpOlder, onPin, pinnedId, showNames = true }) {
+export function MessageList({ messages, policy = () => 'trusted', badge = () => '', mediaAuto = () => true, onReply, onReact, onEdit, onDelete, onHide, footer, header, unreadAfter = Infinity, onReachTop, lookupQuote, jumpOlder, onPin, pinnedId, showNames = true, room = null }) {
   const ref = useRef();
   const stick = useRef(true);
   const touch = useRef(null);
@@ -201,7 +201,7 @@ export function MessageList({ messages, policy = () => 'trusted', badge = () => 
     const el = ref.current;
     const p = prev.current;
     // Your own new message always brings you to the bottom, like Telegram.
-    if (lastMsg && lastMsg.id !== p.last && p.last && lastMsg.pubkey === me.value.pubkey) stick.current = true;
+    if (lastMsg && lastMsg.id !== p.last && p.last && lastMsg.pubkey === me.value?.pubkey) stick.current = true;
     if (stick.current) el.scrollTop = el.scrollHeight;
     else restoreAnchor();
     prev.current = { last: lastMsg?.id };
@@ -292,18 +292,18 @@ export function MessageList({ messages, policy = () => 'trusted', badge = () => 
   };
   const allVisible = messages.filter((m) => policy(m.pubkey) !== 'blocked');
   // Open at the first unread message (Telegram), marked by a divider.
-  const firstUnread = allVisible.find((m) => m.created_at > unreadAfter && m.pubkey !== me.value.pubkey);
+  const firstUnread = allVisible.find((m) => m.created_at > unreadAfter && m.pubkey !== me.value?.pubkey);
   allVisibleRef.current = allVisible;
   firstUnreadRef.current = firstUnread;
   const visibleCount = allVisible.length;
   const visible = allVisible.length > limit ? allVisible.slice(-limit) : allVisible;
   // New messages from others since you scrolled up (older pages loading above don't count).
   const awayIndex = away === null ? -1 : messages.findIndex((m) => m.id === away);
-  const below = awayIndex < 0 ? 0 : messages.slice(awayIndex + 1).filter((m) => m.pubkey !== me.value.pubkey).length;
+  const below = awayIndex < 0 ? 0 : messages.slice(awayIndex + 1).filter((m) => m.pubkey !== me.value?.pubkey).length;
   return html`<div class="thread"><div class="messages" ref=${ref} onScroll=${onScroll} role="log" aria-live="polite" aria-label="Messages" tabindex="0"><div class="messages-inner" ref=${inner}>
     ${header}
     ${visible.map((m, i) => {
-      const mine = m.pubkey === me.value.pubkey;
+      const mine = m.pubkey === me.value?.pubkey;
       const prev = visible[i - 1];
       const next = visible[i + 1];
       const newDay = !prev || dayKey(prev.created_at) !== dayKey(m.created_at);
@@ -353,6 +353,7 @@ export function MessageList({ messages, policy = () => 'trusted', badge = () => 
       onHide=${onHide}
       onPin=${onPin}
       pinnedId=${pinnedId}
+      room=${room}
       onMoreReactions=${(message, x, y) => setReactPicker({ message, x, y })}
       onClose=${() => setMenu(null)}
     />`}
@@ -412,7 +413,7 @@ export function useChatActions(context, messages) {
       // Telegram: arrow-up in an empty composer edits your last message.
       onEdit: async (m, text) => {
         if (!m) {
-          const last = [...messages].reverse().find((x) => x.pubkey === me.value.pubkey);
+          const last = [...messages].reverse().find((x) => x.pubkey === me.value?.pubkey);
           if (last) startEdit(last);
           return;
         }

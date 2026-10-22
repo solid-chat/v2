@@ -68,7 +68,7 @@ function useRecorder() {
 const canRecordVoice = () => typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 // maxLength: a hard cap on the wire text (UTF-16 code units), shown as a counter when near.
-export function Composer({ onSend, placeholder, replyTo, onCancelReply, editing, onEdit, onCancelEdit, draftKey, canUpload = true, mentionables = [], maxLength = 0 }) {
+export function Composer({ onSend, placeholder, replyTo, onCancelReply, editing, onEdit, onCancelEdit, draftKey, canUpload = true, mentionables = [], maxLength = 0, uploadTarget = null }) {
   const [text, setTextState] = useState(() => store.drafts.value[draftKey] ?? '');
   // Keep the per-chat draft in step with what is typed (not while editing a sent message).
   // Drafts reach the store after a pause in typing, so each keystroke doesn't re-render the sidebar.
@@ -144,7 +144,7 @@ export function Composer({ onSend, placeholder, replyTo, onCancelReply, editing,
     setUploading((n) => n + list.length);
     for (const file of list) {
       try {
-        const tag = await store.uploadMedia(file);
+        const tag = await store.uploadMedia(file, uploadTarget);
         const url = tag[1].slice(4);
         uploads.current.set(url, tag);
         const current = textRef.current;
@@ -173,7 +173,7 @@ export function Composer({ onSend, placeholder, replyTo, onCancelReply, editing,
       if (!file) return store.notify('Voice note too short.');
       setUploading((n) => n + 1);
       try {
-        const tag = await store.uploadMedia(file);
+        const tag = await store.uploadMedia(file, uploadTarget);
         await onSend(tag[1].slice(4), [tag]);
         playSound('sent');
       } catch (e) {
@@ -259,7 +259,7 @@ export function Composer({ onSend, placeholder, replyTo, onCancelReply, editing,
       }
     }}
   >
-    ${uploading > 0 && html`<div class="uploading">Uploading ${uploading} file${uploading > 1 ? 's' : ''} to ${new URL(store.mediaServer.value).host}…</div>`}
+    ${uploading > 0 && html`<div class="uploading">Uploading ${uploading} file${uploading > 1 ? 's' : ''} to ${uploadTarget?.room ? 'the chat\'s pod' : new URL(store.mediaServer.value).host}…</div>`}
     ${emojiOpen && html`<${EmojiPanel} onPick=${insert} onClose=${() => setEmojiOpen(false)} />`}
     ${candidates.length > 0 &&
     html`<div class="mentions-popup" role="listbox">

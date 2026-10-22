@@ -64,6 +64,30 @@ function PeopleFinder() {
   </div>`;
 }
 
+// Chats a pod lists in its public type index: yours, or anyone's by WebID or pod address.
+function PodChats() {
+  const [query, setQuery] = useState('');
+  const [found, setFound] = useState(null);
+  const look = useAction();
+  const mine = store.podChats.value;
+  const row = (c) => html`<a class="item" href=${`#/room/${encodeURIComponent(c.address)}`} key=${c.address}>
+    <span class="avatar room">#</span>
+    <span class="label"><b>${c.name}</b><small class="mono">${c.address.replace(/^https?:\/\//, '').slice(0, 60)}</small></span>
+  </a>`;
+  return html`<form class="card" onSubmit=${(e) => {
+    e.preventDefault();
+    look.run(async () => setFound(await store.chatsOnPod(query)));
+  }}>
+    <h3>Chats on a pod</h3>
+    <p class="muted small">Solid apps list a pod's chats in its public type index. Enter a WebID or a pod address to see them.</p>
+    <input placeholder="https://someone.pod/profile/card#me" value=${query} onInput=${(e) => setQuery(e.target.value)} />
+    ${look.error && html`<p class="error">${look.error}</p>`}
+    <button disabled=${look.busy || !query.trim()}>${look.busy ? 'Looking…' : 'Look up'}</button>
+    ${found && (found.length ? found.map(row) : html`<p class="muted small">No chats listed there.</p>`)}
+    ${mine && mine.length > 0 && html`<h4>Your pod's chats</h4>${mine.map(row)}`}
+  </form>`;
+}
+
 export function NewThing() {
   const [link, setLink] = useState('');
   const [name, setName] = useState('');
@@ -105,6 +129,7 @@ export function NewThing() {
         ${create.error && html`<p class="error">${create.error}</p>`}
         <button class="primary" disabled=${create.busy || !pod}>${create.busy ? 'Creating…' : 'Create chat'}</button>
       </form>
+      <${PodChats} />
     </div>
   </section>`;
 }

@@ -11,6 +11,7 @@ import { DirectChat, RoomChat } from './ui/chats.js';
 import { NewThing } from './ui/new.js';
 import { Settings } from './ui/settings.js';
 import { ForwardPicker } from './ui/forward.js';
+import { GuestSidebar } from './ui/sidebar.js';
 import './ui/notifications.js';
 const { me, route, toast } = store;
 
@@ -78,8 +79,16 @@ function App() {
     } catch {}
   }, [unread]);
   if (!me.value && store.restoring.value) return html`<p class="boot muted">Loading…</p>`;
-  if (!me.value || store.addingAccount.value) return html`<${Login} />`;
   const r = route.value;
+  // A room link opens for reading without an account; signing in happens from there.
+  if (!me.value && r.kind === 'room' && !store.wantLogin.value)
+    return html`<div class="layout in-view guest">
+      <${GuestSidebar} />
+      <${RoomChat} id=${r.id} key=${r.id} />
+      ${toast.value && html`<div class="toast">${toast.value}</div>`}
+      <${Viewer} />
+    </div>`;
+  if (!me.value || store.addingAccount.value) return html`<${Login} />`;
   const view =
     r.kind === 'dm'
       ? html`<${DirectChat} id=${r.id} key=${r.id} />`

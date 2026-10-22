@@ -18,6 +18,7 @@ export {
   roomState,
   route,
   toast,
+  wantLogin,
   reactions,
   contacts,
   chatPrefs,
@@ -88,6 +89,7 @@ export {
 } from './store/people.js';
 export {
   deleteMedia,
+  filesOf,
   mediaServer,
   setMediaServer,
   uploadMedia,
@@ -121,4 +123,9 @@ export {
   canWrite,
   podUrl,
   setPodUrl,
+  webId,
+  setWebId,
+  podChats,
+  loadPodChats,
+  chatsOnPod,
 } from './store/rooms.js';

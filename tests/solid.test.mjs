@@ -126,3 +126,24 @@ test('WAC-Allow parsing', () => {
   assert.deepEqual([...w.public], ['read']);
   assert.deepEqual([...solid.parseWacAllow(null).user], []);
 });
+
+test('type index: registrations are read (instances and containers) and written as insert-only patches', async () => {
+  const idx = 'https://pod.example/alice/settings/publicTypeIndex.ttl';
+  const triples = parseTurtle(`@prefix solid: <http://www.w3.org/ns/solid/terms#>.
+@prefix meeting: <http://www.w3.org/ns/pim/meeting#>.
+<#a> a solid:TypeRegistration; solid:forClass meeting:LongChat; solid:instance <../chats/lobby/index.ttl#this>, <https://other.pod/x/index.ttl#this>.
+<#b> a solid:TypeRegistration; solid:forClass meeting:LongChat; solid:instanceContainer <../chats/>.
+<#c> a solid:TypeRegistration; solid:forClass <http://www.w3.org/2002/01/bookmark#Bookmark>; solid:instance <../bookmarks.ttl>.`, idx);
+  // listRegisteredChats fetches; exercise the same parsing through the patch builder and parseTurtle instead.
+  const regs = triples.filter((t) => t.p === 'http://www.w3.org/ns/solid/terms#forClass' && t.o.value === 'http://www.w3.org/ns/pim/meeting#LongChat').map((t) => t.s);
+  assert.deepEqual(regs, [`${idx}#a`, `${idx}#b`]);
+  const patchText = await (async () => {
+    let body;
+    const fakeSigner = { pubkey: me, sign: async (t) => finalizeEvent(t, sk) };
+    globalThis.fetch = async (url, init) => { body = init.body; return new Response(null, { status: 204 }); };
+    await solid.registerChat(fakeSigner, idx, address);
+    return body;
+  })();
+  assert.ok(patchText.includes('solid:inserts') && !patchText.includes('solid:deletes'));
+  assert.ok(patchText.includes('<http://www.w3.org/ns/solid/terms#TypeRegistration>') && patchText.includes(`<${address}>`) && patchText.includes('LongChat'));
+});

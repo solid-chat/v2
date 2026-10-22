@@ -120,7 +120,7 @@ export function RoomInfo({ room, messages }) {
       ${room.owner && html`<${Field} label="Owner" value=${store.displayName(room.owner)} onClick=${() => openProfile(room.owner)} />`}
       <${Field} label="Your access" value=${mayWrite ? 'Post, edit and delete (write)' : 'Post only (append)'} />
     </section>
-    <${ChatToggles} chatKey=${room.address} />
+    ${me.value && html`<${ChatToggles} chatKey=${room.address} />`}
     <${SharedMedia} messages=${messages} allowed=${() => true} />
     ${joined && html`<section><button class="danger wide" onClick=${() => store.leaveRoom(room.address)}>Leave chat</button></section>`}
     <section>

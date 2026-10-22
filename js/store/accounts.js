@@ -9,7 +9,7 @@ import { load as loadPeople, reset as resetPeople, resetSignals as resetPeopleSi
 import { reset as resetMessages, resetSignals as resetMessageSignals, flushSaves } from './messages.js';
 import { start as startInbox, reset as resetDms, resetSignals as resetDmSignals } from './dms.js';
 import { load as loadRooms, reset as resetRooms, resetSignals as resetRoomSignals, openRoom } from './rooms.js';
-import { go, joinedRooms, me, notify, storage } from './core.js';
+import { go, joinedRooms, me, notify, storage, wantLogin } from './core.js';
 
 // ---------- Accounts ----------
 // Remembered accounts live in localStorage as serialized signers; one is active.
@@ -66,7 +66,13 @@ export async function switchAccount(pubkey) {
 
 export async function login(signer, remember) {
   if (me.value) await teardown();
+  else {
+    // A guest may have rooms open anonymously; reopen them with the account's rights.
+    resetRooms();
+    resetRoomSignals();
+  }
   addingAccount.value = false;
+  wantLogin.value = false;
   beginPrefs();
   me.value = signer;
   nostr.enableAuth(signer);

@@ -231,20 +231,33 @@ function NotificationSettings() {
 // in the folder's ACL.
 function PodSettings() {
   const [value, setValue] = useState(store.podUrl.value);
+  const [id, setId] = useState(store.webId.value);
   const save = useAction();
+  const find = useAction();
+  const chats = store.podChats.value;
   return html`<form class="card" onSubmit=${(e) => {
     e.preventDefault();
     save.run(async () => {
       store.setPodUrl(value);
-      store.notify(value.trim() ? 'Pod folder saved' : 'Pod folder cleared');
+      store.setWebId(id);
+      store.loadPodChats();
+      store.notify(value.trim() ? 'Pod settings saved' : 'Pod settings cleared');
     });
   }}>
     <h3>Your pod</h3>
     <p class="muted small">New chats you create are made as folders inside this one, on a Solid pod where your key may write (for example a pod on
       <a href="https://github.com/JavaScriptSolidServer/JavaScriptSolidServer" target="_blank" rel="noopener noreferrer">JSS</a>, which understands
       did:nostr). Chats other people host need no pod at all.</p>
-    <input value=${value} onInput=${(e) => setValue(e.target.value)} placeholder="https://your.pod/public/chats/" />
-    ${save.error && html`<p class="error">${save.error}</p>`}
+    <label>Pod folder<input value=${value} onInput=${(e) => setValue(e.target.value)} placeholder="https://your.pod/public/chats/" /></label>
+    <label>WebID <small class="muted">(optional: lists your chats in your pod's type index, for other Solid apps)</small>
+      <span class="row"><input value=${id} onInput=${(e) => setId(e.target.value)} placeholder="https://your.pod/profile/card#me" />
+      <button type="button" class="link" disabled=${find.busy || !value.trim()} onClick=${() => find.run(async () => {
+        const found = await (await import('../solid.js')).discoverWebId(value.trim());
+        if (!found) throw new Error('No profile found on that pod; enter the WebID by hand.');
+        setId(found);
+      })}>${find.busy ? 'Looking…' : 'Find'}</button></span></label>
+    ${(save.error || find.error) && html`<p class="error">${save.error || find.error}</p>`}
+    ${chats && chats.length > 0 && html`<p class="muted small">Your type index lists ${chats.length} chat${chats.length > 1 ? 's' : ''}: ${chats.map((c) => html`<a href=${`#/room/${encodeURIComponent(c.address)}`}>${c.name}</a> `)}</p>`}
     <button disabled=${save.busy}>Save</button>
   </form>`;
 }

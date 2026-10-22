@@ -269,3 +269,23 @@ export function ChatSearch({ messages, onClose }) {
     <button class="link" title="Close search" onClick=${onClose}>✕</button>
   </div>`;
 }
+
+// What a visitor without an account sees beside a room: the brand and a way in.
+export function GuestSidebar() {
+  const r = route.value;
+  let room = null;
+  try {
+    room = r.kind === 'room' ? roomState.value[nostr.decodeRoomLink(r.id).address]?.room : null;
+  } catch {}
+  return html`<aside class="sidebar">
+    <header>
+      <span class="me"><img src="icon.svg" width="32" height="32" alt="" /><span>Solid Chat</span></span>
+    </header>
+    <nav>
+      <h2>Chats</h2>
+      ${room && html`<a class="item on" href=${location.hash}><${RoomAvatar} room=${room} /><span class="label"><span class="line"><b>${room.name}</b></span><small>Reading as a guest</small></span></a>`}
+      <p class="muted small pad">You are reading as a guest. Sign in to post, react and keep this chat in your list.</p>
+      <p class="pad"><button class="primary wide" onClick=${() => (store.wantLogin.value = true)}>Sign in</button></p>
+    </nav>
+  </aside>`;
+}

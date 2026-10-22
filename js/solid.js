@@ -399,6 +399,112 @@ export async function readWebIdProfile(webId) {
   return { name: name.slice(0, 80), picture: /^https:\/\//.test(photo) ? resolveIri(photo, webId) : '', storage };
 }
 
+// ---------- Type index: where a pod lists its chats ----------
+
+const TYPE = {
+  TypeRegistration: `${NS.solid}TypeRegistration`,
+  forClass: `${NS.solid}forClass`,
+  instance: `${NS.solid}instance`,
+  instanceContainer: `${NS.solid}instanceContainer`,
+  publicTypeIndex: `${NS.solid}publicTypeIndex`,
+  primaryTopic: `${NS.foaf}primaryTopic`,
+};
+
+// Profile facts the app needs: name, picture, storage roots, public type index.
+export async function readProfile(webId) {
+  const { triples, missing } = await readGraph(stripFragment(webId));
+  if (missing) throw new Error('No profile document at that address.');
+  const s = webId;
+  const name = valueOf(triples, s, T.foafName) ?? valueOf(triples, s, T.vcardFn) ?? valueOf(triples, s, T.name) ?? '';
+  const photo = valueOf(triples, s, T.foafImg) ?? valueOf(triples, s, T.hasPhoto) ?? valueOf(triples, s, T.depiction) ?? valueOf(triples, s, T.image) ?? '';
+  const abs = (v) => resolveIri(v, webId);
+  return {
+    webId,
+    name: name.slice(0, 80),
+    picture: /^https:\/\//.test(photo) ? abs(photo) : '',
+    storage: objectsOf(triples, s, T.storage).map((o) => abs(o.value)),
+    typeIndex: objectsOf(triples, s, TYPE.publicTypeIndex).map((o) => abs(o.value))[0] ?? '',
+  };
+}
+
+// The chats (meeting:LongChat registrations) a type index lists: [{ address, container }].
+export async function listRegisteredChats(typeIndexUrl, signer) {
+  const { triples, missing } = await readGraph(typeIndexUrl, { signer });
+  if (missing) return [];
+  const regs = triples.filter((t) => t.p === TYPE.forClass && t.o.value === T.LongChat).map((t) => t.s);
+  const out = [];
+  for (const reg of regs) {
+    for (const o of objectsOf(triples, reg, TYPE.instance)) out.push({ address: chatAddress(resolveIri(o.value, typeIndexUrl)) });
+    for (const o of objectsOf(triples, reg, TYPE.instanceContainer)) out.push({ container: resolveIri(o.value, typeIndexUrl) });
+  }
+  return out;
+}
+
+// Add a chat to a type index (insert-only patch, so Append on the index is enough).
+export async function registerChat(signer, typeIndexUrl, address) {
+  const reg = `${stripFragment(typeIndexUrl)}#chat-${Date.now().toString(36)}`;
+  const triples = [
+    { s: reg, p: RDF_TYPE, o: iri(TYPE.TypeRegistration) },
+    { s: reg, p: TYPE.forClass, o: iri(T.LongChat) },
+    { s: reg, p: TYPE.instance, o: iri(address) },
+  ];
+  await patch(signer, typeIndexUrl, inserts(triples));
+  return reg;
+}
+
+// Guess the WebID behind a pod folder: the profile documents JSS and NSS put at the pod
+// root. Returns '' when none answers with a foaf:Person or storage link.
+export async function discoverWebId(podUrl) {
+  const u = new URL(podUrl);
+  const first = u.pathname.split('/').filter(Boolean)[0];
+  const candidates = [
+    ...(first ? [`${u.origin}/${first}/profile/card#me`, `${u.origin}/${first}/profile/card.jsonld#me`] : []),
+    `${u.origin}/profile/card#me`,
+    `${u.origin}/profile/card.jsonld#me`,
+    `${u.origin}/#me`,
+  ];
+  for (const webId of candidates) {
+    try {
+      const p = await readProfile(webId);
+      if (p.storage.length || p.typeIndex || p.name) return webId;
+    } catch {}
+  }
+  return '';
+}
+
+// ---------- Files on the pod ----------
+
+const safeName = (name) => name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^[-.]+/, '').slice(0, 80) || 'file';
+
+// Put a file in <root>files/ with POST (so Append is enough) and return its URL.
+// Returns the NIP-92 style imeta tag the composer expects.
+export async function uploadFile(signer, root, file) {
+  if (!file.size) throw new Error('The selected file is empty.');
+  if (file.size > 20 * 1024 * 1024) throw new Error('Uploads are limited to 20 MiB.');
+  const folder = `${root}files/`;
+  const ext = file.name.includes('.') ? '' : extensionFor(file.type);
+  const slug = `${Date.now().toString(36)}-${safeName(file.name)}${ext}`;
+  const post = () => request(folder, { signer, method: 'POST', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream', Slug: slug }, auth: 'always', what: 'Uploading' });
+  let res;
+  try {
+    res = await post();
+  } catch (e) {
+    if (e.status !== 404 && e.status !== 405) throw e;
+    // No files/ folder yet: create it (POST a container into the room), then retry.
+    await request(root, { signer, method: 'POST', body: '', headers: { 'Content-Type': 'text/turtle', Slug: 'files', Link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"' }, auth: 'always', what: 'Creating the files folder' });
+    res = await post();
+  }
+  const url = res.headers.get('Location') ?? `${folder}${slug}`;
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return ['imeta', `url ${url}`, `m ${file.type}`, `size ${file.size}`, `x ${hash}`];
+}
+
+const extensionFor = (type) => ({ 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'video/mp4': '.mp4', 'video/webm': '.webm', 'audio/webm': '.weba', 'audio/mp4': '.m4a', 'audio/ogg': '.ogg', 'audio/mpeg': '.mp3' })[type.split(';')[0]] ?? '';
+
+export async function deleteFile(signer, url) {
+  await request(url, { signer, method: 'DELETE', auth: 'always', what: 'Removing the file' });
+}
+
 // ---------- Live updates (solid-0.1 WebSockets) ----------
 // One socket per origin, discovered from the Updates-Via header; subscriptions are
 // multiplexed and restored after a reconnect.

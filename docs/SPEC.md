@@ -134,6 +134,27 @@ inherit. Both are `PUT` with `text/turtle` and a NIP-98 header.
 3.11 **Length.** Content up to 20,000 UTF-16 units is sent and shown; longer messages are
 dropped when reading.
 
+3.12 **Reading as a guest.** A room is read without any key: the index, day files and
+live socket are all anonymous requests (2.1). Posting, reacting, joining and read marks
+need an account.
+
+3.13 **Type index.** When the account's WebID is known, creating a room also inserts
+`<index>#chat-<id> a solid:TypeRegistration; solid:forClass meeting:LongChat;
+solid:instance <address>` into the `solid:publicTypeIndex` named in the WebID profile
+(an insert-only patch, 2.5). Discovery reads a profile's public type index and lists every
+`solid:instance` of a `meeting:LongChat` registration, and every folder with an
+`index.ttl` under a `solid:instanceContainer`. The WebID for a pod folder is guessed from
+`<pod>/<name>/profile/card#me`, `<origin>/profile/card#me` and `<origin>/#me` when not
+given.
+
+3.14 **Files.** A file posted in a room is sent with `POST <root>files/` (`Slug:
+<time>-<name>`, the file's own `Content-Type`, NIP-98 header), which needs only
+`acl:Append`; a missing `files/` folder is created first with a `POST` carrying
+`Link: <http://www.w3.org/ns/ldp#BasicContainer>; rel="type"`. The `Location` of the
+reply goes into the message text; readers classify it by extension or, for the sender,
+by the `imeta` tag kept locally. The uploader (or anyone with Write) removes it with
+`DELETE`.
+
 ## 4. Direct messages (NIP-17)
 
 Unchanged from nostr.chat's profile (sections 3.1–3.11 there), in brief: kind 14
@@ -155,10 +176,11 @@ or written.
 
 ## 6. Media
 
-6.1 Uploads go to a Blossom server (`PUT /upload`, kind 24242 auth, `image/*`,
-`video/*`, `audio/*` up to 20 MiB) and the URL goes into the text; in rooms the URL is
-all other clients see, in DMs an `imeta` tag is added as well. 6.2 `DELETE /<sha256>`
-removes an upload. 6.3 Media and avatars load with `Referrer-Policy: no-referrer`.
+6.1 In rooms, uploads go to the room's folder on the pod (3.14). In DMs they go to a
+Blossom server (`PUT /upload`, kind 24242 auth, `image/*`, `video/*`, `audio/*` up to
+20 MiB) and the URL goes into the text with an `imeta` tag. 6.2 `DELETE /<sha256>`
+removes a Blossom upload; `DELETE <url>` a pod one. 6.3 Media and avatars load with
+`Referrer-Policy: no-referrer`.
 
 ## 7. Trust and policy
 
@@ -185,7 +207,7 @@ To host such rooms, a pod needs to: accept `PATCH` with `text/n3` and create mis
 resources; treat insert-only patches as `Append`; send `WAC-Allow`; serve Turtle or
 JSON-LD; offer `Updates-Via` for live updates; and, to let Nostr keys post or own
 rooms, verify NIP-98 and name `did:nostr:` agents in ACLs (JSS does all of this from
-0.0.223).
+0.0.223; non-RDF `POST` bodies for uploads from 0.0.224).
 
 To message a Solid Chat user privately, follow the NIP-17 profile (4).
 
@@ -198,5 +220,5 @@ To message a Solid Chat user privately, follow the NIP-17 profile (4).
   owner. There is no per-message ownership in WAC.
 - Solid-OIDC is not implemented: a pod that does not accept NIP-98 can host rooms you read
   but not rooms you create.
-- Uploads go to Blossom, not to the pod.
+- DM uploads go to Blossom, not to a pod.
 - No push notifications while the tab is closed; no encrypted rooms.

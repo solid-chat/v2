@@ -6,9 +6,12 @@ A no-build Preact client for chat rooms that live on [Solid](https://solidprojec
 - **Identity:** your Nostr key. In links and copy buttons people are [did:nostr](https://did-nostr.com) (`did:nostr:<hex pubkey>`); `npub` is display only. Pod requests are signed with NIP-98 (kind 27235), which [JSS](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer) pods accept directly: a `did:nostr:` agent can be named in ACLs or linked to a WebID. People posting from other Solid apps appear by their WebID, with name and picture read from their profile document.
 - **Live:** rooms update over the pod's solid-0.1 WebSocket (`Updates-Via`), with a slow poll as backstop. History is paged a day file at a time by listing the chat's year, month and day folders.
 - **Permissions:** rooms created here grant the public Read and Append and the owner everything, so anyone with the link can post but only the owner can edit or delete. The app reads `WAC-Allow` and offers edit and delete only where the pod allows Write.
+- **Reading needs no account.** A room link opens for anyone; signing in is offered from the room for posting, reacting and keeping it in the list.
+- **Type index:** a chat you create is registered in your pod's public type index (`solid:TypeRegistration` for `meeting:LongChat`) when Settings knows your WebID, and the New screen lists the chats any WebID or pod registers, so SolidOS and v2 share one room list.
+- **Files in rooms** are uploaded to the room's own `files/` folder on the pod with a POST (Append is enough), and the URL goes into the message. JSS 0.0.224 or later accepts non-RDF POST bodies; DMs and profile pictures still use Blossom.
 - **DMs:** NIP-17 kind 14 rumors, sealed and gift-wrapped with NIP-44, sent to the recipient's kind 10050 inbox relays, compatible with [Anagram](https://github.com/lnbits/anagram) and [nostr.chat](https://nostr.chat). Decrypted messages are cached in IndexedDB.
 - **Contacts and blocks:** Anagram's private contact list (kind 30000) and mute list (kind 10000), shared with those apps. Read marks, pins and mutes sync between your devices in an encrypted kind 30078 (`d=solid-chat`).
-- **Media:** photos, video and audio upload to a Blossom server (default `blossom.nostr.build`) and are sent as NIP-92 `imeta` attachments with the URL in the text.
+- **Media:** in rooms, files go to the room's folder on the pod; in DMs they upload to a Blossom server (default `blossom.nostr.build`) and are sent as NIP-92 `imeta` attachments with the URL in the text.
 - **Login:** nsec (kept in localStorage), NIP-07 extension (needs NIP-44), or a NIP-46 `bunker://` signer.
 
 ## Running it against a pod
@@ -17,7 +20,7 @@ Rooms hosted by others need nothing: open the room's link or paste its address (
 
 For development: `npx serve .` here and, in another terminal, a local JSS (`jss start --port 5447 --root ./data --single-user --single-user-name alice --idp --notifications --conneg`). Put a chat folder with an `index.ttl` and a public-append `.acl` under `data/alice/public/` (the shapes are in `js/solid.js`: `chatIndexTurtle` and `chatAclTurtle`) and open `http://localhost:5447/alice/public/<folder>/` from the New screen. The page's CSP allows `http://localhost:*` and `ws://localhost:*` for this.
 
-JSS before 0.0.223 loses triples on PATCH and requires Write for every PATCH; the fix (quad-based patching, Append for insert-only patches) is in [JavaScriptSolidServer PR](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer/pulls) `fix/patch-with-n3`.
+JSS before 0.0.223 loses triples on PATCH and requires Write for every PATCH (fixed in [PR #633](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer/pull/633)); before 0.0.224 it refuses non-RDF POST bodies, so room uploads need that version.
 
 ## Interoperability
 
@@ -39,7 +42,7 @@ What leaves your device, and to whom (also at [solid-chat.com/v2/privacy](https:
 
 Serve the folder with any static server and open it. Code layout (plain ES modules, no build): `js/app.js` is the root; `js/ui/` the views by feature; `js/store.js` the public state and action surface, implemented in `js/store/` (`core`, `accounts`, `prefs`, `people`, `messages`, `dms`, `rooms`, `media`); `js/solid.js` is the only module that talks to pods (NIP-98, the chat format, patches, live updates), `js/turtle.js` a small Turtle and JSON-LD reader and Turtle writer, `js/nostr.js` the Nostr protocol helpers, `js/transport.js` the only relay access, `js/db.js` the IndexedDB cache. Preact, signals, htm and nostr-tools are vendored as pinned ES modules in `vendor/` (checksums in `SHA256SUMS`) and wired up by the import map in `index.html`. `npm test` runs the Turtle and chat-format tests; `npm run check` syntax-checks every served module and verifies the vendored checksums. The `gh-pages` branch is the site.
 
-Not included yet: private (encrypted) rooms, Solid-OIDC sign-in for pods that do not accept Nostr keys, uploads to the pod itself, push notifications when the tab is closed.
+Not included yet: private (encrypted) rooms, Solid-OIDC sign-in for pods that do not accept Nostr keys, push notifications when the tab is closed.
 
 ## License
 

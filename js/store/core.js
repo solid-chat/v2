@@ -13,6 +13,7 @@ export const joinedRooms = signal([]); // [{ address, owner, slug, relays, name 
 export const roomState = signal({}); // address -> { room, messages, loading, error, exhausted }
 export const route = signal(parseRoute());
 export const toast = signal('');
+export const wantLogin = signal(false); // a guest asked for the sign-in screen
 export const reactions = signal({}); // target message id -> [{ id, pubkey, emoji }]
 export const contacts = signal([]);
 export const chatPrefs = signal({ pinned: [], muted: [] }); // chat keys
