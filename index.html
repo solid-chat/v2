@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Solid Chat — chat rooms on your pod</title>
+    <meta
+      name="description"
+      content="Chat rooms stored on Solid pods in the open Solid chat format, plus end-to-end encrypted direct messages over Nostr. Nothing to install, no account server. Your identity is a key you own (did:nostr)."
+    />
+    <link rel="canonical" href="https://solid-chat.com/v2/" />
+    <meta name="application-name" content="Solid Chat" />
+    <meta name="apple-mobile-web-app-title" content="Solid Chat" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Solid Chat" />
+    <meta property="og:url" content="https://solid-chat.com/v2/" />
+    <meta property="og:title" content="Solid Chat — chat that lives on your pod" />
+    <meta
+      property="og:description"
+      content="Rooms are folders on a Solid pod in the open Solid chat format; DMs are end-to-end encrypted over Nostr. One key signs in to both."
+    />
+    <meta property="og:image" content="https://solid-chat.com/v2/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Solid Chat — chat that lives on your pod." />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Solid Chat — chat that lives on your pod" />
+    <meta name="twitter:description" content="Rooms on Solid pods in the open Solid chat format; end-to-end encrypted DMs over Nostr." />
+    <meta name="twitter:image" content="https://solid-chat.com/v2/og-image.png" />
+    <meta name="twitter:image:alt" content="Solid Chat — chat that lives on your pod." />
+
+    <!-- Structured data (a data block, not executed, so CSP doesn't apply) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Solid Chat",
+        "url": "https://solid-chat.com/v2/",
+        "description": "Chat rooms stored on Solid pods in the Solid chat format, plus end-to-end encrypted direct messages over Nostr.",
+        "applicationCategory": "CommunicationApplication",
+        "operatingSystem": "Any (web browser)",
+        "image": "https://solid-chat.com/v2/og-image.png",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "codeRepository": "https://github.com/solid-chat/v2"
+      }
+    </script>
+    <!-- Hashes cover the two inline scripts below; recompute if either changes. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1dzQkz7YEfGTXPftOsMbxv5s0/ry8bKCY72wulVUEAE=' 'sha256-jnBSk72zqbi0a5LCa/ibHVaDg1o2MqR3+gtt8tzNXNI='; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; media-src https: blob:; connect-src 'self' https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#5b5bd6" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Apply a chosen theme before first paint so there is no flash.
+      try {
+        const t = JSON.parse(localStorage.getItem('lite:theme'));
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <script type="importmap">
+      {
+        "imports": {
+          "preact": "./vendor/preact.mjs",
+          "preact/hooks": "./vendor/hooks.mjs",
+          "@preact/signals": "./vendor/signals.mjs",
+          "htm": "./vendor/htm.mjs",
+          "nostr-tools": "./vendor/nostr-tools.mjs",
+          "nostr-tools/nip46": "./vendor/nip46.mjs"
+        }
+      }
+    </script>
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>Solid Chat needs JavaScript.</noscript>
+  </body>
+</html>

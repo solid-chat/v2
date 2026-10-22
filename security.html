@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Security — Solid Chat</title>
+    <meta name="description" content="What protects you in Solid Chat, what does not, and how to report a problem." />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href="https://solid-chat.com/v2/security" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      try {
+        const t = JSON.parse(localStorage.getItem('lite:theme'));
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+  </head>
+  <body class="doc">
+    <main class="doc-wrap">
+      <p class="doc-nav"><a href="./">Solid Chat</a> · <a href="privacy">Privacy</a></p>
+      <h1>Security</h1>
+      <p class="lead">Plain statements about what protects you, what does not, and how to report a problem.</p>
+
+      <h2>Rooms</h2>
+      <p>Rooms are not encrypted. They are files on a pod, protected only by that pod's permissions (Web Access Control). A room created here lets anyone with the link read and post, and only the owner change or remove messages. Every write is signed by your key, so the pod can tell who wrote what, but a pod owner with write access can alter any message; trust the pod you post on as you would trust a forum's operator.</p>
+
+      <h2>Direct messages</h2>
+      <p>Direct messages use NIP-17: the message is sealed and gift-wrapped with NIP-44 encryption, so relays carry only an opaque envelope from a throwaway key. Only the recipient and you can read it.</p>
+
+      <h2>Identity and keys</h2>
+      <p>You are a key pair. The private key never leaves your browser, extension or remote signer, and we cannot reset or recover it. Anyone with your private key is you; keep the backup from Settings safe. Requests to pods are signed with a short-lived event bound to the exact URL and method (NIP-98), so a captured request cannot be replayed elsewhere. A profile's NIP-05 address is only shown as verified after a direct check against that domain.</p>
+
+      <h2>The code you run</h2>
+      <p>Solid Chat is static files with no build step. Every library is vendored and pinned, with recorded checksums that are checked in continuous integration, and the page's Content Security Policy allows scripts from this origin only. There is no runtime dependency on a CDN. Events from relays and directories are signature-verified on your device; chat files from pods are data, rendered as text, with links clickable and media loaded only from https addresses.</p>
+
+      <h2>Deletion</h2>
+      <p>Deleting your own room message removes it from the pod where the pod lets you (room owners can; guests of an open room cannot). Deleting a direct message publishes a standard deletion request that well-behaved relays and clients honour, but cannot force every copy to disappear. "Delete for me" hides a message on your devices only.</p>
+
+      <h2>Limits you should know</h2>
+      <ul>
+        <li>Pods and relays see your IP address and when you are online. Solid Chat is not an anonymity tool; use it over a VPN or Tor if that matters to you.</li>
+        <li>Room content is public to whoever the pod allows, including search engines if the pod lets them in.</li>
+        <li>Standard NIP-17 messages have no forward secrecy: a private key stolen later can decrypt past envelopes still held on relays.</li>
+        <li>A compromised device, browser extension or signer can read what you can read.</li>
+        <li>There are no push notifications while the tab is closed.</li>
+      </ul>
+
+      <h2>Reporting</h2>
+      <p>Found a vulnerability? Please open an issue at <a href="https://github.com/solid-chat/v2/issues">github.com/solid-chat/v2/issues</a>, or, for something sensitive, send the maintainer an encrypted direct message from inside Solid Chat.</p>
+
+      <p class="muted small">Source: <a href="https://github.com/solid-chat/v2">github.com/solid-chat/v2</a>.</p>
+    </main>
+  </body>
+</html>
